@@ -22,6 +22,16 @@ $(call inherit-product-if-exists, vendor/samsung/trlte/trlte-vendor.mk)
 # Overlays
 DEVICE_PACKAGE_OVERLAYS += device/samsung/trlte/overlay
 
+# Keylayouts
+PRODUCT_COPY_FILES += \
+    device/samsung/trlte/keylayout/sec_touchkey.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/sec_touchkey.kl \
+    device/samsung/trlte/keylayout/gpio-keys.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/gpio-keys.kl \
+    device/samsung/trlte/keylayout/synaptics_rmi4_i2c.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/synaptics_rmi4_i2c.kl \
+    device/samsung/trlte/keylayout/Vendor_04e8_Product_7021.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/Vendor_04e8_Product_7021.kl \
+    device/samsung/trlte/idc/Synaptics_HID_TouchPad.idc:$(TARGET_COPY_OUT_SYSTEM)/usr/idc/Synaptics_HID_TouchPad.idc \
+    device/samsung/trlte/idc/sec_e-pen.idc:$(TARGET_COPY_OUT_SYSTEM)/usr/idc/sec_e-pen.idc \
+    device/samsung/trlte/idc/sec_touchscreen.idc:$(TARGET_COPY_OUT_SYSTEM)/usr/idc/sec_touchscreen.idc
+
 # Variant blobs script
 PRODUCT_COPY_FILES += \
     device/samsung/trlte/releasetools/variant_blobs_hook.sh:install/bin/variant_blobs_hook.sh \
