@@ -18,9 +18,6 @@
 
 TARGET_OTA_ASSERT_DEVICE := trlte,trltedt,trltecan,trltespr,trltetmo,trlteusc,trltevzw,trltexx
 
-# Camera
-TARGET_FIXUP_PREVIEW := true
-
 # Kernel
 TARGET_KERNEL_VARIANT_CONFIG := apq8084_sec_trlte_eur_defconfig
 
