@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2016, The Linux Foundation. All rights reserved.
-   Copyright (c) 2017-2018, The LineageOS Project. All rights reserved.
+   Copyright (c) 2020, The LineageOS Project. All rights reserved.
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
@@ -28,110 +27,145 @@
    IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdlib.h>
-#define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
-#include <sys/_system_properties.h>
 
+#include <stdlib.h>
+
+#include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/properties.h>
+#include <android-base/strings.h>
 
 #include "property_service.h"
 #include "vendor_init.h"
 
-#include "init_apq8084.h"
+#define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
+#include <sys/_system_properties.h>
 
 using android::base::GetProperty;
+using android::base::ReadFileToString;
+using android::base::Trim;
 using android::init::property_set;
 
-void gsm_properties()
+#define SERIAL_NUMBER_FILE "/efs/FactoryApp/serial_no"
+
+// copied from build/tools/releasetools/ota_from_target_files.py
+// but with "." at the end and empty entry
+std::vector<std::string> ro_product_props_default_source_order = {
+    "",
+    "product.",
+    "product_services.",
+    "odm.",
+    "vendor.",
+    "system.",
+};
+
+void property_override(char const prop[], char const value[], bool add = true)
 {
-    property_set("telephony.lteOnGsmDevice", "1");
-    property_set("ro.telephony.default_network", "9");
+    auto pi = (prop_info *) __system_property_find(prop);
+
+    if (pi != nullptr) {
+        __system_property_update(pi, value, strlen(value));
+    } else if (add) {
+        __system_property_add(prop, strlen(prop), value, strlen(value));
+    }
 }
 
-void cdma_properties(char const *operator_alpha,
-                     char const *operator_numeric,
-                     char const *cdma_sub)
+void vendor_load_properties()
 {
-    /* Dynamic CDMA Properties */
-    property_set("ro.cdma.home.operator.alpha", operator_alpha);
-    property_set("ro.cdma.home.operator.numeric", operator_numeric);
-    property_set("ro.telephony.default_cdma_sub", cdma_sub);
+    const std::string bootloader = GetProperty("ro.bootloader", "");
 
-    /* Static CDMA Properties */
-    property_set("ril.subscription.types", "NV,RUIM");
-    property_set("ro.telephony.default_network", "10");
-    property_set("telephony.lteOnCdmaDevice", "1");
-}
+    char const *serial_number_file = SERIAL_NUMBER_FILE;
+    std::string serial_number;
 
-void init_target_properties()
-{
-    std::string platform = GetProperty("ro.board.platform", "");
-    if (platform != ANDROID_TARGET)
-        return;
+    if (ReadFileToString(serial_number_file, &serial_number)) {
+        serial_number = Trim(serial_number);
+        property_override("ro.serialno", serial_number.c_str());
+    }
 
-    std::string bootloader = GetProperty("ro.bootloader", "");
+    const auto set_ro_product_prop = [](const std::string &source,
+            const std::string &prop, const std::string &value) {
+        auto prop_name = "ro.product." + source + prop;
+        property_override(prop_name.c_str(), value.c_str(), false);
+    };
 
     if (bootloader.find("N910F") == 0) {
         /* trltexx */
-        property_override_dual("ro.build.fingerprint", "ro.vendor.build.fingerprint", "samsung/trltexx/trlte:6.0.1/MMB29M/N910FXXU1DRD1:user/release-keys");
+        for (const auto &source : ro_product_props_default_source_order) {
+            set_ro_product_prop(source, "fingerprint", "samsung/trltexx/trlte:6.0.1/MMB29M/N910FXXU1DRD1:user/release-keys");
+            set_ro_product_prop(source, "device", "trlte");
+            set_ro_product_prop(source, "model", "SM-N910F");
+            set_ro_product_prop(source, "name", "trltexx");
+        }
         property_override("ro.build.description", "trltexx-user 6.0.1 MMB29M N910FXXU1DRD1 release-keys");
-        property_override_dual("ro.product.model", "ro.vendor.product.model", "SM-N910F");
-        property_override_dual("ro.product.device", "ro.vendor.product.device", "trlte");
-        property_override_dual("ro.product.name", "ro.vendor.product.name", "trltexx");
-        gsm_properties();
+        property_override("ro.build.product", "trlte");
     } else if (bootloader.find("N910G") == 0) {
         /* trltedt */
-        property_override_dual("ro.build.fingerprint", "ro.vendor.build.fingerprint", "samsung/trltedt/trlte:6.0.1/MMB29M/N910GDTU1DRD1:user/release-keys");
+        for (const auto &source : ro_product_props_default_source_order) {
+            set_ro_product_prop(source, "fingerprint", "samsung/trltedt/trlte:6.0.1/MMB29M/N910GDTU1DRD1:user/release-keys");
+            set_ro_product_prop(source, "device", "trlte");
+            set_ro_product_prop(source, "model", "SM-N910G");
+            set_ro_product_prop(source, "name", "trltedt");
+        }
         property_override("ro.build.description", "trltedt-user 6.0.1 MMB29M N910GDTU1DRD1 release-keys");
-        property_override_dual("ro.product.model", "ro.vendor.product.model", "SM-N910G");
-        property_override_dual("ro.product.device", "ro.vendor.product.device", "trlte");
-        property_override_dual("ro.product.name", "ro.vendor.product.name", "trltedt");
-        gsm_properties();
+        property_override("ro.build.product", "trlte");
     } else if (bootloader.find("N910P") == 0) {
         /* trltespr */
-        property_override_dual("ro.build.fingerprint", "ro.vendor.build.fingerprint", "samsung/trltespr/trltespr:6.0.1/MMB29M/N910PVPU5DQI5:user/release-keys");
+        for (const auto &source : ro_product_props_default_source_order) {
+            set_ro_product_prop(source, "fingerprint", "samsung/trltespr/trltespr:6.0.1/MMB29M/N910PVPU5DQI5:user/release-keys");
+            set_ro_product_prop(source, "device", "trltespr");
+            set_ro_product_prop(source, "model", "SM-N910P");
+            set_ro_product_prop(source, "name", "trltespr");
+        }
         property_override("ro.build.description", "trltespr-user 6.0.1 MMB29M N910PVPU5DQI5 release-keys");
-        property_override_dual("ro.product.model", "ro.vendor.product.model", "SM-N910P");
-        property_override_dual("ro.product.device", "ro.vendor.product.device", "trltespr");
-        property_override_dual("ro.product.name", "ro.vendor.product.name", "trltespr");
-        cdma_properties("Sprint", "310120", "1");
+        property_override("ro.build.product", "trltespr");
+        property_set("ro.cdma.home.operator.alpha", "Sprint");
+        property_set("ro.cdma.home.operator.numeric", "310120");
     } else if (bootloader.find("N910R4") == 0) {
         /* trlteusc */
-        property_override_dual("ro.build.fingerprint", "ro.vendor.build.fingerprint", "samsung/trlteusc/trlteusc:6.0.1/MMB29M/N910R4TYS1CQC1:user/release-keys");
+        for (const auto &source : ro_product_props_default_source_order) {
+            set_ro_product_prop(source, "fingerprint", "samsung/trlteusc/trlteusc:6.0.1/MMB29M/N910R4TYS1CQC1:user/release-keys");
+            set_ro_product_prop(source, "device", "trlteusc");
+            set_ro_product_prop(source, "model", "SM-N910R4");
+            set_ro_product_prop(source, "name", "trlteusc");
+        }
         property_override("ro.build.description", "trlteusc-user 6.0.1 MMB29M N910R4TYS1CQC1 release-keys");
-        property_override_dual("ro.product.model", "ro.vendor.product.model", "SM-N910R4");
-        property_override_dual("ro.product.device", "ro.vendor.product.device", "trlteusc");
-        property_override_dual("ro.product.name", "ro.vendor.product.name", "trlteusc");
-        cdma_properties("U.S. Cellular", "311580", "0");
+        property_override("ro.build.product", "trlteusc");
+        property_set("ro.cdma.home.operator.alpha", "U.S. Cellular");
+        property_set("ro.cdma.home.operator.numeric", "311580");
     } else if (bootloader.find("N910T") == 0) {
         /* trltetmo */
-        property_override_dual("ro.build.fingerprint", "ro.vendor.build.fingerprint", "samsung/trltetmo/trltetmo:6.0.1/MMB29M/N910TUVU2EQI2:user/release-keys");
+        for (const auto &source : ro_product_props_default_source_order) {
+            set_ro_product_prop(source, "fingerprint", "samsung/trltetmo/trltetmo:6.0.1/MMB29M/N910TUVU2EQI2:user/release-keys");
+            set_ro_product_prop(source, "device", "trltetmo");
+            set_ro_product_prop(source, "model", "SM-N910T");
+            set_ro_product_prop(source, "name", "trltetmo");
+        }
         property_override("ro.build.description", "trltetmo-user 6.0.1 MMB29M N910TUVU2EQI2 release-keys");
-        property_override_dual("ro.product.model", "ro.vendor.product.model", "SM-N910T");
-        property_override_dual("ro.product.device", "ro.vendor.product.device", "trltetmo");
-        property_override_dual("ro.product.name", "ro.vendor.product.name", "trltetmo");
-        gsm_properties();
+        property_override("ro.build.product", "trltetmo");
     } else if (bootloader.find("N910V") == 0) {
         /* trltevzw */
-        property_override_dual("ro.build.fingerprint", "ro.vendor.build.fingerprint", "Verizon/trltevzw/trltevzw:6.0.1/MMB29M/N910VVRU2CQL1:user/release-keys");
+        for (const auto &source : ro_product_props_default_source_order) {
+            set_ro_product_prop(source, "fingerprint", "Verizon/trltevzw/trltevzw:6.0.1/MMB29M/N910VVRU2CQL1:user/release-keys");
+            set_ro_product_prop(source, "device", "trltevzw");
+            set_ro_product_prop(source, "model", "SM-N910V");
+            set_ro_product_prop(source, "name", "trltevzw");
+        }
         property_override("ro.build.description", "trltevzw-user 6.0.1 MMB29M N910VVRU2CQL1 release-keys");
-        property_override_dual("ro.product.model", "ro.vendor.product.model", "SM-N910V");
-        property_override_dual("ro.product.device", "ro.vendor.product.device", "trltevzw");
-        property_override_dual("ro.product.name", "ro.vendor.product.name", "trltevzw");
-        cdma_properties("Verizon", "311480", "0");
+        property_override("ro.build.product", "trltevzw");
+        property_set("ro.cdma.home.operator.alpha", "Verizon");
+        property_set("ro.cdma.home.operator.numeric", "311480");
     } else if (bootloader.find("N910W8") == 0) {
         /* trltecan */
-        property_override_dual("ro.build.fingerprint", "ro.vendor.build.fingerprint", "samsung/trltecan/trltecan:6.0.1/MMB29M/N910W8VLS1DQH2:user/release-keys");
+        for (const auto &source : ro_product_props_default_source_order) {
+            set_ro_product_prop(source, "fingerprint", "samsung/trltecan/trltecan:6.0.1/MMB29M/N910W8VLS1DQH2:user/release-keys");
+            set_ro_product_prop(source, "device", "trltecan");
+            set_ro_product_prop(source, "model", "SM-N910W8");
+            set_ro_product_prop(source, "name", "trltecan");
+        }
         property_override("ro.build.description", "trltecan-user 6.0.1 MMB29M N910W8VLS1DQH2 release-keys");
-        property_override_dual("ro.product.model", "ro.vendor.product.model", "SM-N910W8");
-        property_override_dual("ro.product.device", "ro.vendor.product.device", "trltecan");
-        property_override_dual("ro.product.name", "ro.vendor.product.name", "trltecan");
-        gsm_properties();
-    } else {
-        gsm_properties();
+        property_override("ro.build.product", "trltecan");
     }
 
-    std::string device = GetProperty("ro.product.device", "");
-    LOG(ERROR) << "Found bootloader id " << bootloader << " setting build properties for " << device << " device" << std::endl;
+    const std::string device = GetProperty("ro.product.device", "");
+    LOG(INFO) << "Found bootloader " << bootloader << ". " << "Setting build properties for " << device << ".\n";
 }
