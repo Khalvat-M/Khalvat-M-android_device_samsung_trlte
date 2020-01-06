@@ -18,12 +18,14 @@
 
 TARGET_OTA_ASSERT_DEVICE := trlte,trltedt,trltecan,trltespr,trltetmo,trlteusc,trltevzw,trltexx
 
+TRLTE_PATH := device/samsung/trlte
+
 # Kernel
 TARGET_KERNEL_VARIANT_CONFIG := apq8084_sec_trlte_eur_defconfig
 
 # Init
-TARGET_INIT_VENDOR_LIB := libinit_apq8084
-TARGET_LIBINIT_APQ8084_DEFINES_FILE := device/samsung/trlte/init/init_trlte.cpp
+TARGET_INIT_VENDOR_LIB := //$(TRLTE_PATH):libinit_trlte
+TARGET_RECOVERY_DEVICE_MODULES := libinit_trlte
 
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144
